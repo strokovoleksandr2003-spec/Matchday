@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8" />
+<title>Matchday — адмінка</title>
+<style>
+  :root {
+    --ink: #171A17;
+    --bg: #F5F4EF;
+    --card: #FFFFFF;
+    --line: #E3E0D5;
+    --muted: #8C8F85;
+    --accent: #1E7A4C;
+    --danger: #B23B32;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 24px;
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 32px 0 10px; }
+  p.hint { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input, select, button {
+    font: inherit;
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  input, select { width: 100%; margin-bottom: 10px; }
+  button {
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row input { margin-bottom: 0; }
+  .list-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .muted { color: var(--muted); font-size: 12px; }
+  #status { font-size: 13px; margin-top: 6px; min-height: 18px; }
+  #status.error { color: var(--danger); }
+  #status.ok { color: var(--accent); }
+  .gate { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+
+  <h1>Matchday — адмінка</h1>
+  <p class="hint">Внесення команд, розкладу та результатів турів УПЛ.</p>
+
+  <div class="card gate">
+    <div style="flex:1">
+      <label for="token">Admin token</label>
+      <input id="token" type="password" placeholder="встав токен з .env (ADMIN_TOKEN)" />
+    </div>
+    <button id="saveToken" style="margin-top:18px">Увійти</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="app" style="display:none">
+
+    <h2>Команди</h2>
+    <div class="card">
+      <div class="row">
+        <input id="teamName" placeholder="Назва команди (напр. Полісся)" />
+        <button id="addTeam">Додати</button>
+      </div>
+    </div>
+    <div class="card" id="teamsList"></div>
+
+    <h2>Новий матч</h2>
+    <div class="card">
+      <label>Господарі</label>
+      <select id="homeTeam"></select>
+      <label>Гості</label>
+      <select id="awayTeam"></select>
+      <label>Дата й час (UTC)</label>
+      <input id="matchDate" type="datetime-local" />
+      <label>Тур (необов'язково)</label>
+      <input id="matchday" type="number" min="1" />
+      <button id="addMatch">Додати матч</button>
+    </div>
+
+    <h2>Заплановані матчі</h2>
+    <div class="card" id="scheduledList"></div>
+
+    <h2>Завершені матчі</h2>
+    <div class="card" id="finishedList"></div>
+
+  </div>
+
+<script>
+const statusEl = document.getElementById('status');
+function setStatus(msg, kind) {
+  statusEl.textContent = msg || '';
+  statusEl.className = kind || '';
+}
+
+function getToken() { return localStorage.getItem('matchday_admin_token') || ''; }
+
+async function api(path, options = {}) {
+  const res = await fetch('/api/admin' + path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-token': getToken(),
+      ...(options.headers || {}),
+    },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+let teams = [];
+
+async function refreshTeams() {
+  const { teams: t } = await api('/teams');
+  teams = t;
+  const list = document.getElementById('teamsList');
+  list.innerHTML = teams.length
+    ? teams.map(t => `
+        <div class="list-item">
+          <span>${t.name}</span>
+          <button class="danger" data-delete-team="${t.id}">Видалити</button>
+        </div>`).join('')
+    : '<p class="muted">Команд ще немає — додай хоча б дві вище.</p>';
+
+  const opts = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  document.getElementById('homeTeam').innerHTML = opts;
+  document.getElementById('awayTeam').innerHTML = opts;
+}
+
+function teamName(id) {
+  const t = teams.find(x => x.id === id);
+  return t ? t.name : '?';
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+async function refreshMatches() {
+  const { matches } = await api('/matches?league=upl');
+
+  const scheduled = matches.filter(m => m.status === 'scheduled')
+    .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+  const finished = matches.filter(m => m.status === 'finished')
+    .sort((a, b) => new Date(b.utcDate) - new Date(a.utcDate));
+
+  document.getElementById('scheduledList').innerHTML = scheduled.length
+    ? scheduled.map(m => `
+        <div class="list-item">
+          <span>${teamName(m.homeTeamId)} – ${teamName(m.awayTeamId)} <span class="muted">(${fmtDate(m.utcDate)})</span></span>
+          <span class="row" style="width:auto">
+            <input type="number" min="0" style="width:44px" id="h_${m.id}" placeholder="0" />
+            :
+            <input type="number" min="0" style="width:44px" id="a_${m.id}" placeholder="0" />
+            <button data-save-score="${m.id}">Зберегти</button>
+            <button class="danger" data-delete-match="${m.id}">✕</button>
+          </span>
+        </div>`).join('')
+    : '<p class="muted">Запланованих матчів немає.</p>';
+
+  document.getElementById('finishedList').innerHTML = finished.length
+    ? finished.map(m => `
+        <div class="list-item">
+          <span>${teamName(m.homeTeamId)} <b>${m.score.home}:${m.score.away}</b> ${teamName(m.awayTeamId)} <span class="muted">(${fmtDate(m.utcDate)})</span></span>
+          <span class="row" style="width:auto">
+            <button class="secondary" data-edit-score="${m.id}">Виправити</button>
+            <button class="danger" data-delete-match="${m.id}">✕</button>
+          </span>
+        </div>`).join('')
+    : '<p class="muted">Завершених матчів ще немає.</p>';
+}
+
+async function refreshAll() {
+  await refreshTeams();
+  await refreshMatches();
+}
+
+document.getElementById('saveToken').addEventListener('click', async () => {
+  localStorage.setItem('matchday_admin_token', document.getElementById('token').value.trim());
+  try {
+    await refreshAll();
+    document.getElementById('app').style.display = 'block';
+    setStatus('Готово.', 'ok');
+  } catch (err) {
+    setStatus(err.message, 'error');
+  }
+});
+
+document.getElementById('addTeam').addEventListener('click', async () => {
+  const name = document.getElementById('teamName').value.trim();
+  if (!name) return;
+  try {
+    await api('/teams', { method: 'POST', body: JSON.stringify({ name, league: 'upl' }) });
+    document.getElementById('teamName').value = '';
+    await refreshTeams();
+    setStatus('Команду додано.', 'ok');
+  } catch (err) {
+    setStatus(err.message, 'error');
+  }
+});
+
+document.getElementById('addMatch').addEventListener('click', async () => {
+  const homeTeamId = document.getElementById('homeTeam').value;
+  const awayTeamId = document.getElementById('awayTeam').value;
+  const rawDate = document.getElementById('matchDate').value;
+  const matchday = document.getElementById('matchday').value || null;
+  if (!rawDate) return setStatus('Вкажи дату матчу.', 'error');
+
+  try {
+    await api('/matches', {
+      method: 'POST',
+      body: JSON.stringify({
+        league: 'upl',
+        homeTeamId,
+        awayTeamId,
+        utcDate: new Date(rawDate).toISOString(),
+        matchday: matchday ? Number(matchday) : null,
+      }),
+    });
+    await refreshMatches();
+    setStatus('Матч додано.', 'ok');
+  } catch (err) {
+    setStatus(err.message, 'error');
+  }
+});
+
+document.addEventListener('click', async (e) => {
+  const saveId = e.target.getAttribute('data-save-score');
+  const deleteTeamId = e.target.getAttribute('data-delete-team');
+  const deleteMatchId = e.target.getAttribute('data-delete-match');
+  const editId = e.target.getAttribute('data-edit-score');
+
+  try {
+    if (saveId) {
+      const home = document.getElementById(`h_${saveId}`).value;
+      const away = document.getElementById(`a_${saveId}`).value;
+      if (home === '' || away === '') return setStatus('Введи обидва рахунки.', 'error');
+      await api(`/matches/${saveId}/score`, { method: 'PATCH', body: JSON.stringify({ home, away }) });
+      await refreshMatches();
+      setStatus('Результат збережено.', 'ok');
+    }
+    if (deleteTeamId) {
+      if (!confirm('Видалити команду?')) return;
+      await api(`/teams/${deleteTeamId}`, { method: 'DELETE' });
+      await refreshAll();
+    }
+    if (deleteMatchId) {
+      if (!confirm('Видалити матч?')) return;
+      await api(`/matches/${deleteMatchId}`, { method: 'DELETE' });
+      await refreshMatches();
+    }
+    if (editId) {
+      await api(`/matches/${editId}/score`, { method: 'PATCH', body: JSON.stringify({ home: null, away: null }) });
+      await refreshMatches();
+      setStatus('Матч повернуто до запланованих — онови рахунок.', 'ok');
+    }
+  } catch (err) {
+    setStatus(err.message, 'error');
+  }
+});
+
+// auto-login if a token is already saved
+if (getToken()) {
+  document.getElementById('token').value = getToken();
+  refreshAll()
+    .then(() => { document.getElementById('app').style.display = 'block'; })
+    .catch((err) => setStatus(err.message, 'error'));
+}
+</script>
+</body>
+</html>

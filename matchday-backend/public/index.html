@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8" />
+<title>Matchday</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #171A17;
+    --bg: #F5F4EF;
+    --card: #FFFFFF;
+    --line: #E3E0D5;
+    --muted: #8C8F85;
+    --accent: #1E7A4C;
+    --win: #1E7A4C; --win-bg: #E3F2E9;
+    --draw: #8A6D1D; --draw-bg: #F2EFE0;
+    --loss: #B23B32; --loss-bg: #FBE7E5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Inter, system-ui, sans-serif;
+  }
+  .shell { max-width: 720px; margin: 0 auto; padding: 20px 20px 60px; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 32px; height: 32px; border-radius: 9px; background: var(--accent);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .brand-name {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px;
+    letter-spacing: -0.02em;
+  }
+  .pill {
+    padding: 6px 14px; border-radius: 20px; background: var(--ink); color: var(--bg);
+    font-size: 12px; font-weight: 600;
+  }
+  #updated { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  h2 {
+    font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700;
+    margin: 28px 0 10px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 18px;
+  }
+
+  #nextMatch {
+    background: var(--ink); border-radius: 16px; padding: 18px 20px;
+    color: var(--bg);
+  }
+  .nm-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .nm-meta .tag {
+    font-size: 11px; color: var(--accent); background: rgba(30,122,76,0.22);
+    padding: 3px 8px; border-radius: 6px; font-weight: 600;
+  }
+  .nm-meta .when { font-size: 12px; color: #9A9D93; }
+  .nm-teams { display: flex; align-items: center; justify-content: space-between; }
+  .nm-team { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100px; }
+  .nm-avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: #2A2E27;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .nm-team span:last-child { font-size: 13px; font-weight: 600; text-align: center; }
+  .nm-vs { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; color: #9A9D93; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: right; padding: 6px 4px; color: var(--muted); font-weight: 500; font-size: 11px; }
+  th:nth-child(2) { text-align: left; }
+  td { padding: 10px 4px; border-top: 1px solid var(--line); text-align: right; }
+  td:nth-child(2) { text-align: left; font-weight: 600; }
+  td:first-child, th:first-child { text-align: left; color: var(--muted); width: 24px; }
+
+  .form-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-top: 1px solid var(--line);
+  }
+  .form-row:first-child { border-top: none; }
+  .form-row .name { font-size: 13px; font-weight: 600; }
+  .badges { display: flex; gap: 4px; }
+  .badge {
+    width: 20px; height: 20px; border-radius: 5px; font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .badge.W { background: var(--win-bg); color: var(--win); }
+  .badge.D { background: var(--draw-bg); color: var(--draw); }
+  .badge.L { background: var(--loss-bg); color: var(--loss); }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
+  .error { color: var(--loss); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="brand">
+      <div class="logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F5F4EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg>
+      </div>
+      <div>
+        <div class="brand-name">Matchday</div>
+        <div id="updated">завантаження…</div>
+      </div>
+    </div>
+    <span class="pill">UPL</span>
+  </header>
+
+  <h2>Найближчий матч</h2>
+  <div id="nextMatch"><p class="empty" style="color:#9A9D93">Завантаження…</p></div>
+
+  <h2>Турнірна таблиця</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>#</th><th>Команда</th><th>І</th><th>З</th><th>Н</th><th>П</th><th>О</th></tr></thead>
+      <tbody id="standingsBody"><tr><td colspan="7" class="empty">Завантаження…</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2>Форма команд</h2>
+  <div class="card" id="formList"><p class="empty">Завантаження…</p></div>
+
+</div>
+
+<script>
+const LEAGUE = 'upl';
+
+async function getJSON(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+  return res.json();
+}
+
+function initials(name) {
+  return name.trim().slice(0, 3).toUpperCase();
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleString('uk-UA', {
+    weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function renderNextMatch(match) {
+  const el = document.getElementById('nextMatch');
+  if (!match) {
+    el.innerHTML = '<p class="empty" style="color:#9A9D93">Запланованих матчів немає.</p>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="nm-meta">
+      <span class="tag">${match.matchday ? 'ТУР ' + match.matchday : 'НАЙБЛИЖЧИЙ'}</span>
+      <span class="when">${fmtDate(match.utc_date)}</span>
+    </div>
+    <div class="nm-teams">
+      <div class="nm-team">
+        <div class="nm-avatar">${initials(match.home_team.name)}</div>
+        <span>${match.home_team.name}</span>
+      </div>
+      <span class="nm-vs">VS</span>
+      <div class="nm-team">
+        <div class="nm-avatar">${initials(match.away_team.name)}</div>
+        <span>${match.away_team.name}</span>
+      </div>
+    </div>`;
+}
+
+function renderStandings(standings) {
+  const body = document.getElementById('standingsBody');
+  if (!standings.length) {
+    body.innerHTML = '<tr><td colspan="7" class="empty">Команд ще немає.</td></tr>';
+    return;
+  }
+  body.innerHTML = standings.map(row => `
+    <tr>
+      <td>${row.position}</td>
+      <td>${row.team.name}</td>
+      <td>${row.matches_played}</td>
+      <td>${row.wins}</td>
+      <td>${row.draws}</td>
+      <td>${row.losses}</td>
+      <td style="font-weight:700">${row.points}</td>
+    </tr>`).join('');
+}
+
+function renderForm(form) {
+  const el = document.getElementById('formList');
+  const teams = Object.keys(form);
+  if (!teams.length) {
+    el.innerHTML = '<p class="empty">Ще немає завершених матчів.</p>';
+    return;
+  }
+  el.innerHTML = teams.map(name => `
+    <div class="form-row">
+      <span class="name">${name}</span>
+      <span class="badges">
+        ${form[name].map(r => `<span class="badge ${r}">${r}</span>`).join('')}
+      </span>
+    </div>`).join('');
+}
+
+async function refresh() {
+  try {
+    const [standingsRes, nextRes, formRes] = await Promise.all([
+      getJSON(`/api/leagues/${LEAGUE}/standings`),
+      getJSON(`/api/leagues/${LEAGUE}/next-match`),
+      getJSON(`/api/leagues/${LEAGUE}/form?limit=5`),
+    ]);
+    renderStandings(standingsRes.standings);
+    renderNextMatch(nextRes.match);
+    renderForm(formRes.form);
+    document.getElementById('updated').textContent =
+      'оновлено ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+  } catch (err) {
+    document.getElementById('updated').innerHTML = `<span class="error">${err.message}</span>`;
+  }
+}
+
+refresh();
+setInterval(refresh, 30000); // re-poll every 30s so results entered in /admin.html show up without a manual reload
+</script>
+</body>
+</html>

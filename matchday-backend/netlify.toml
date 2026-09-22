@@ -1,0 +1,14 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# static assets (index.html, admin.html) are served straight from
+# publish/ by Netlify's CDN — only /api/* goes through the function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[functions]
+  node_bundler = "esbuild"
