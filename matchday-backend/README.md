@@ -40,6 +40,43 @@ Open `http://localhost:4000/admin.html` to enter teams/results, or
    `ADMIN_TOKEN`.
 4. Deploy. Your admin form is at `https://<your-site>.netlify.app/admin.html`.
 
+## Automatic fixture sync (optional)
+
+Fixtures and results can be pulled from API-Football instead of typed in
+by hand.
+
+1. Sign up at **dashboard.api-football.com** (free tier: 100 requests/day)
+   and copy your key.
+2. Add three environment variables — locally in `.env`, and on Netlify
+   under Site configuration → Environment variables:
+   - `API_FOOTBALL_KEY` — your key
+   - `API_FOOTBALL_LEAGUE_ID` — `333` for the UPL
+   - `API_FOOTBALL_SEASON` — e.g. `2026`
+
+That's it. `netlify/functions/sync-fixtures.mjs` then runs every day at
+04:00 UTC and folds new fixtures, results and postponements into
+Supabase. The admin panel also has a **Синхронізувати зараз** button
+(`POST /api/admin/sync`) for running it on demand right after a matchday.
+
+Without these variables nothing breaks — the app just stays fully manual.
+
+### How syncing avoids duplicates
+
+Teams and matches carry an `external_id` linking them to their
+API-Football counterpart. On each run the sync:
+
+1. matches an incoming team by `external_id` (set on a previous run),
+2. failing that, by name — Ukrainian names entered by hand are compared
+   against the API's English ones via a small transliteration, and the
+   id is stored so step 1 handles it next time,
+3. failing that, creates the team.
+
+Because of this the sync is idempotent: running it twice changes
+nothing the second time, and a club you entered as "Полісся" keeps that
+name rather than being duplicated as "Polissya Zhytomyr". It uses one
+API request per run (a date window of −7/+14 days), so the free quota is
+never a constraint.
+
 ## Public read endpoints
 
 | Method | Path | Feeds |
@@ -53,6 +90,7 @@ Open `http://localhost:4000/admin.html` to enter teams/results, or
 
 | Method | Path | Does |
 |---|---|---|
+| POST | `/api/admin/sync` | run the fixture sync on demand |
 | GET / POST | `/api/admin/teams` | list / add a team |
 | DELETE | `/api/admin/teams/:id` | remove a team |
 | GET / POST | `/api/admin/matches` | list / schedule a match |

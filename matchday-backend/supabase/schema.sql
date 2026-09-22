@@ -14,6 +14,12 @@ create table if not exists teams (
 alter table teams add column if not exists coach text;
 alter table teams add column if not exists stadium text;
 
+-- external_id links a row to its API-Football counterpart, so repeated
+-- syncs update the same row instead of inserting duplicates. Null for
+-- anything entered by hand.
+alter table teams add column if not exists external_id bigint;
+create unique index if not exists teams_external_id_idx on teams (external_id) where external_id is not null;
+
 create table if not exists players (
   id uuid primary key default gen_random_uuid(),
   team_id uuid not null references teams(id) on delete cascade,
@@ -41,6 +47,9 @@ create table if not exists matches (
 );
 
 create index if not exists matches_league_status_idx on matches (league, status);
+
+alter table matches add column if not exists external_id bigint;
+create unique index if not exists matches_external_id_idx on matches (external_id) where external_id is not null;
 
 -- Row Level Security: the app only ever talks to Supabase through the
 -- service_role key from the Netlify Function (never from the browser),

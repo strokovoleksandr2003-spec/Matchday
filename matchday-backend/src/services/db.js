@@ -58,14 +58,34 @@ async function listTeams({ league = "upl" } = {}) {
   return ensure(result);
 }
 
-async function addTeam({ name, league = "upl" }) {
+async function addTeam({ name, league = "upl", externalId = null }) {
   if (!name || !name.trim()) throw new Error("Team name is required");
   const result = await getClient()
     .from("teams")
-    .insert({ name: name.trim(), league })
+    .insert({ name: name.trim(), league, external_id: externalId })
     .select()
     .single();
   return ensure(result);
+}
+
+// Used by the sync job to decide whether an incoming API team is one we
+// already track. Returns undefined when it's new.
+async function findTeamByExternalId(externalId) {
+  const result = await getClient().from("teams").select("*").eq("external_id", externalId);
+  return ensure(result)[0];
+}
+
+// Links an existing hand-entered team to its API-Football counterpart,
+// so future syncs update it instead of creating a duplicate.
+async function setTeamExternalId(teamId, externalId) {
+  const result = await getClient()
+    .from("teams")
+    .update({ external_id: externalId })
+    .eq("id", teamId)
+    .select()
+    .single();
+  if (result.error) throw new Error(`No team with id ${teamId}`);
+  return result.data;
 }
 
 async function deleteTeam(teamId) {
@@ -95,7 +115,7 @@ async function listMatches({ league = "upl", status } = {}) {
   return ensure(result).map(mapMatchRow);
 }
 
-async function addMatch({ league = "upl", homeTeamId, awayTeamId, utcDate, matchday }) {
+async function addMatch({ league = "upl", homeTeamId, awayTeamId, utcDate, matchday, externalId = null }) {
   if (!homeTeamId || !awayTeamId) {
     throw new Error("homeTeamId and awayTeamId are required");
   }
@@ -115,10 +135,29 @@ async function addMatch({ league = "upl", homeTeamId, awayTeamId, utcDate, match
       utc_date: utcDate,
       matchday: matchday ?? null,
       status: "scheduled",
+      external_id: externalId,
     })
     .select()
     .single();
   return mapMatchRow(ensure(result));
+}
+
+async function findMatchByExternalId(externalId) {
+  const result = await getClient().from("matches").select("*").eq("external_id", externalId);
+  const row = ensure(result)[0];
+  return row ? mapMatchRow(row) : undefined;
+}
+
+// Updates a synced match's kickoff time / round when the API changes
+// them (postponements are common in the UPL).
+async function updateMatchSchedule(matchId, { utcDate, matchday }) {
+  const patch = {};
+  if (utcDate !== undefined) patch.utc_date = utcDate;
+  if (matchday !== undefined) patch.matchday = matchday;
+
+  const result = await getClient().from("matches").update(patch).eq("id", matchId).select().single();
+  if (result.error) throw new Error(`No match with id ${matchId}`);
+  return mapMatchRow(result.data);
 }
 
 // Records a result and flips the match to "finished". Pass null score
@@ -227,10 +266,14 @@ module.exports = {
   addTeam,
   deleteTeam,
   updateTeam,
+  findTeamByExternalId,
+  setTeamExternalId,
   listMatches,
   addMatch,
   setMatchScore,
   deleteMatch,
+  findMatchByExternalId,
+  updateMatchSchedule,
   listPlayers,
   addPlayer,
   updatePlayer,

@@ -82,6 +82,16 @@
 
   <div id="app" style="display:none">
 
+    <h2>Синхронізація з API</h2>
+    <div class="card">
+      <p class="muted" style="margin:0 0 10px">
+        Підтягує розклад і результати УПЛ з API-Football. Запускається автоматично щодня о 04:00 UTC —
+        кнопка нижче потрібна, якщо треба оновити одразу після туру.
+      </p>
+      <button id="runSync">Синхронізувати зараз</button>
+      <div id="syncResult" class="muted" style="margin-top:10px"></div>
+    </div>
+
     <h2>Команди</h2>
     <div class="card">
       <div class="row">
@@ -311,6 +321,36 @@ document.getElementById('addTeam').addEventListener('click', async () => {
     setStatus('Команду додано.', 'ok');
   } catch (err) {
     setStatus(err.message, 'error');
+  }
+});
+
+document.getElementById('runSync').addEventListener('click', async () => {
+  const btn = document.getElementById('runSync');
+  const out = document.getElementById('syncResult');
+  btn.disabled = true;
+  btn.textContent = 'Синхронізую…';
+  out.textContent = '';
+
+  try {
+    const { summary } = await api('/sync', { method: 'POST', body: JSON.stringify({}) });
+    const parts = [
+      `отримано ${summary.fetched} матчів`,
+      `додано ${summary.created + summary.created_finished}`,
+      `оновлено результатів ${summary.result_updated}`,
+      `перенесено ${summary.schedule_updated}`,
+    ];
+    out.textContent = parts.join(' · ');
+    if (summary.errors.length) {
+      out.textContent += ` · помилок: ${summary.errors.length}`;
+    }
+    await refreshAll();
+    setStatus('Синхронізацію завершено.', 'ok');
+  } catch (err) {
+    out.innerHTML = `<span style="color:var(--danger)">${err.message}</span>`;
+    setStatus(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Синхронізувати зараз';
   }
 });
 

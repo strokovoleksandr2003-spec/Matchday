@@ -1,9 +1,27 @@
 const express = require("express");
 const db = require("../services/db");
+const { syncFixtures } = require("../services/syncService");
 const { adminAuth } = require("../middleware/adminAuth");
 
 const router = express.Router();
 router.use(adminAuth);
+
+// --- sync ------------------------------------------------------------
+
+// Runs the same sync as the nightly scheduled function, on demand —
+// useful right after a matchday instead of waiting for 04:00 UTC.
+router.post("/sync", async (req, res) => {
+  try {
+    const summary = await syncFixtures({
+      league: req.body.league || "upl",
+      daysBack: req.body.daysBack,
+      daysForward: req.body.daysForward,
+    });
+    res.json({ summary });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 // --- teams ---------------------------------------------------------
 
