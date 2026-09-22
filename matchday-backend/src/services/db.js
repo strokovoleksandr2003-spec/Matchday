@@ -73,6 +73,19 @@ async function deleteTeam(teamId) {
   return ensure(result).length > 0;
 }
 
+// Partial update — coach and/or stadium. Player-level info (captain,
+// injuries) lives on the players table instead, since a captain is a
+// player, not a team-level fact.
+async function updateTeam(teamId, { coach, stadium } = {}) {
+  const patch = {};
+  if (coach !== undefined) patch.coach = coach;
+  if (stadium !== undefined) patch.stadium = stadium;
+
+  const result = await getClient().from("teams").update(patch).eq("id", teamId).select().single();
+  if (result.error) throw new Error(`No team with id ${teamId}`);
+  return result.data;
+}
+
 // --- matches ---------------------------------------------------------
 
 async function listMatches({ league = "upl", status } = {}) {
@@ -135,13 +148,91 @@ async function deleteMatch(matchId) {
   return ensure(result).length > 0;
 }
 
+// --- players (squad) -------------------------------------------------
+
+const PLAYER_STATUSES = ["available", "injured", "suspended"];
+
+function mapPlayerRow(row) {
+  return {
+    id: row.id,
+    teamId: row.team_id,
+    name: row.name,
+    position: row.position,
+    jerseyNumber: row.jersey_number,
+    isCaptain: row.is_captain,
+    status: row.status,
+    statusNote: row.status_note,
+  };
+}
+
+async function listPlayers({ teamId }) {
+  if (!teamId) throw new Error("teamId is required");
+  const result = await getClient()
+    .from("players")
+    .select("*")
+    .eq("team_id", teamId)
+    .order("jersey_number");
+  return ensure(result).map(mapPlayerRow);
+}
+
+async function addPlayer({ teamId, name, position, jerseyNumber, isCaptain }) {
+  if (!teamId) throw new Error("teamId is required");
+  if (!name || !name.trim()) throw new Error("Player name is required");
+
+  const result = await getClient()
+    .from("players")
+    .insert({
+      team_id: teamId,
+      name: name.trim(),
+      position: position || null,
+      jersey_number: jerseyNumber ?? null,
+      is_captain: !!isCaptain,
+      status: "available",
+    })
+    .select()
+    .single();
+  return mapPlayerRow(ensure(result));
+}
+
+// Partial update — pass only the fields that changed. Used both for
+// editing a player's details and for flipping their availability
+// status (available/injured/suspended) before a matchday.
+async function updatePlayer(playerId, patch = {}) {
+  if (patch.status !== undefined && !PLAYER_STATUSES.includes(patch.status)) {
+    throw new Error(`status must be one of: ${PLAYER_STATUSES.join(", ")}`);
+  }
+
+  const dbPatch = {};
+  if (patch.name !== undefined) dbPatch.name = patch.name;
+  if (patch.position !== undefined) dbPatch.position = patch.position;
+  if (patch.jerseyNumber !== undefined) dbPatch.jersey_number = patch.jerseyNumber;
+  if (patch.isCaptain !== undefined) dbPatch.is_captain = patch.isCaptain;
+  if (patch.status !== undefined) dbPatch.status = patch.status;
+  if (patch.statusNote !== undefined) dbPatch.status_note = patch.statusNote;
+
+  const result = await getClient().from("players").update(dbPatch).eq("id", playerId).select().single();
+  if (result.error) throw new Error(`No player with id ${playerId}`);
+  return mapPlayerRow(result.data);
+}
+
+async function deletePlayer(playerId) {
+  const result = await getClient().from("players").delete().eq("id", playerId).select();
+  return ensure(result).length > 0;
+}
+
 module.exports = {
   _setClient,
+  PLAYER_STATUSES,
   listTeams,
   addTeam,
   deleteTeam,
+  updateTeam,
   listMatches,
   addMatch,
   setMatchScore,
   deleteMatch,
+  listPlayers,
+  addPlayer,
+  updatePlayer,
+  deletePlayer,
 };

@@ -97,6 +97,22 @@
 
   .empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
   .error { color: var(--loss); font-size: 13px; }
+
+  .squad-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 18px; margin-bottom: 10px;
+  }
+  .squad-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+  .squad-head .name { font-weight: 700; font-size: 14px; }
+  .squad-head .coach { font-size: 12px; color: var(--muted); }
+  .squad-line { font-size: 13px; margin: 4px 0; }
+  .squad-line .label { color: var(--muted); }
+  .unavail-tag {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
+    padding: 2px 8px; border-radius: 6px; margin: 2px 4px 2px 0;
+  }
+  .unavail-tag.injured { background: var(--loss-bg); color: var(--loss); }
+  .unavail-tag.suspended { background: var(--draw-bg); color: var(--draw); }
 </style>
 </head>
 <body>
@@ -128,6 +144,9 @@
 
   <h2>Форма команд</h2>
   <div class="card" id="formList"><p class="empty">Завантаження…</p></div>
+
+  <h2>Склади команд</h2>
+  <div id="squadsList"></div>
 
 </div>
 
@@ -208,6 +227,42 @@ function renderForm(form) {
     </div>`).join('');
 }
 
+function positionLabel(pos) {
+  return { GK: 'ВР', DF: 'ЗХ', MF: 'ПЗ', FW: 'НП' }[pos] || pos || '';
+}
+
+async function renderSquads(standings) {
+  const el = document.getElementById('squadsList');
+  if (!standings.length) {
+    el.innerHTML = '<p class="empty">Команд ще немає.</p>';
+    return;
+  }
+
+  const details = await Promise.all(
+    standings.map(row => getJSON(`/api/leagues/${LEAGUE}/teams/${row.team.id}`).catch(() => null))
+  );
+
+  el.innerHTML = details.filter(Boolean).map(({ team, players }) => {
+    const captain = players.find(p => p.isCaptain);
+    const unavailable = players.filter(p => p.status !== 'available');
+
+    return `
+      <div class="squad-card">
+        <div class="squad-head">
+          <span class="name">${team.name}</span>
+          ${team.coach ? `<span class="coach">Тренер: ${team.coach}</span>` : ''}
+        </div>
+        ${team.stadium ? `<div class="squad-line"><span class="label">Стадіон:</span> ${team.stadium}</div>` : ''}
+        ${captain ? `<div class="squad-line"><span class="label">Капітан:</span> ${captain.name}</div>` : ''}
+        <div class="squad-line">
+          ${unavailable.length
+            ? unavailable.map(p => `<span class="unavail-tag ${p.status}">${p.name}${p.jerseyNumber ? ' #' + p.jerseyNumber : ''} — ${p.status === 'injured' ? 'травма' : 'дискваліфікація'}</span>`).join('')
+            : '<span class="label">Повний склад доступний</span>'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
 async function refresh() {
   try {
     const [standingsRes, nextRes, formRes] = await Promise.all([
@@ -218,6 +273,7 @@ async function refresh() {
     renderStandings(standingsRes.standings);
     renderNextMatch(nextRes.match);
     renderForm(formRes.form);
+    renderSquads(standingsRes.standings);
     document.getElementById('updated').textContent =
       'оновлено ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
   } catch (err) {

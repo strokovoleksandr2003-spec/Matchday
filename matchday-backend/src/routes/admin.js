@@ -35,6 +35,19 @@ router.delete("/teams/:id", async (req, res) => {
   }
 });
 
+// team info — coach and stadium
+router.patch("/teams/:id", async (req, res) => {
+  try {
+    const team = await db.updateTeam(req.params.id, {
+      coach: req.body.coach,
+      stadium: req.body.stadium,
+    });
+    res.json({ team });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // --- matches ---------------------------------------------------------
 
 router.get("/matches", async (req, res) => {
@@ -79,6 +92,53 @@ router.delete("/matches/:id", async (req, res) => {
   try {
     const deleted = await db.deleteMatch(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Match not found" });
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- players (squad) -------------------------------------------------
+
+router.get("/players", async (req, res) => {
+  try {
+    const players = await db.listPlayers({ teamId: req.query.teamId });
+    res.json({ players });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post("/players", async (req, res) => {
+  try {
+    const player = await db.addPlayer({
+      teamId: req.body.teamId,
+      name: req.body.name,
+      position: req.body.position,
+      jerseyNumber: req.body.jerseyNumber,
+      isCaptain: req.body.isCaptain,
+    });
+    res.status(201).json({ player });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// partial update — name/position/jerseyNumber/isCaptain/status/statusNote,
+// send only what changed
+router.patch("/players/:id", async (req, res) => {
+  try {
+    const player = await db.updatePlayer(req.params.id, req.body);
+    res.json({ player });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete("/players/:id", async (req, res) => {
+  try {
+    const deleted = await db.deletePlayer(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Player not found" });
     res.json({ deleted: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

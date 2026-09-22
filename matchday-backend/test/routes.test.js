@@ -85,3 +85,27 @@ describe("GET /api/leagues/:league/form", () => {
     assert.deepEqual(res.body.form["Dynamo"], ["L"]);
   });
 });
+
+describe("GET /api/leagues/:league/teams/:teamId", () => {
+  test("returns team info and squad", async () => {
+    await db.updateTeam(polissya.id, { coach: "Coach", stadium: "Arena" });
+    await db.addPlayer({ teamId: polissya.id, name: "Captain Player", isCaptain: true });
+    await db.addPlayer({ teamId: polissya.id, name: "Injured Player", isCaptain: false });
+    await db.updatePlayer(
+      (await db.listPlayers({ teamId: polissya.id })).find((p) => p.name === "Injured Player").id,
+      { status: "injured" }
+    );
+
+    const res = await request(app).get(`/api/leagues/upl/teams/${polissya.id}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.team.coach, "Coach");
+    assert.equal(res.body.players.length, 2);
+    assert.ok(res.body.players.some((p) => p.isCaptain));
+    assert.ok(res.body.players.some((p) => p.status === "injured"));
+  });
+
+  test("404s for an unknown team", async () => {
+    const res = await request(app).get("/api/leagues/upl/teams/00000000-0000-0000-0000-000000000000");
+    assert.equal(res.status, 404);
+  });
+});

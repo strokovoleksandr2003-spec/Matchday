@@ -101,4 +101,20 @@ router.get("/:league/form", async (req, res) => {
   }
 });
 
+// GET /api/leagues/:league/teams/:teamId — team info (coach, stadium)
+// plus its squad (players, with captain/injury/suspension status)
+router.get("/:league/teams/:teamId", async (req, res) => {
+  try {
+    getLeague(req.params.league);
+    const teams = await db.listTeams({ league: req.params.league });
+    const team = teams.find((t) => t.id === req.params.teamId);
+    if (!team) return res.status(404).json({ error: "Team not found" });
+
+    const players = await db.listPlayers({ teamId: req.params.teamId });
+    res.json({ team, players });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router;

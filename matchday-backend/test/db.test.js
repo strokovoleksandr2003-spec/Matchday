@@ -117,3 +117,75 @@ describe("db.matches", () => {
     assert.deepEqual(await db.listMatches({ league: "upl" }), []);
   });
 });
+
+describe("db.updateTeam", () => {
+  test("sets coach and stadium, leaves other fields alone", async () => {
+    const team = await db.addTeam({ name: "Polissya" });
+    const updated = await db.updateTeam(team.id, { coach: "Ruslan Rotan", stadium: "Polissya Arena" });
+    assert.equal(updated.coach, "Ruslan Rotan");
+    assert.equal(updated.stadium, "Polissya Arena");
+    assert.equal(updated.name, "Polissya");
+  });
+
+  test("throws for an unknown team id", async () => {
+    await assert.rejects(
+      () => db.updateTeam("00000000-0000-0000-0000-000000000000", { coach: "X" }),
+      /No team with id/
+    );
+  });
+});
+
+describe("db.players", () => {
+  test("addPlayer requires a teamId and a name", async () => {
+    const team = await db.addTeam({ name: "A" });
+    await assert.rejects(() => db.addPlayer({ name: "X" }), /teamId is required/);
+    await assert.rejects(() => db.addPlayer({ teamId: team.id, name: "  " }), /name is required/);
+  });
+
+  test("addPlayer defaults status to available and isCaptain to false", async () => {
+    const team = await db.addTeam({ name: "A" });
+    const player = await db.addPlayer({ teamId: team.id, name: "Ivan Petrenko", position: "MF", jerseyNumber: 8 });
+    assert.equal(player.status, "available");
+    assert.equal(player.isCaptain, false);
+    assert.equal(player.jerseyNumber, 8);
+  });
+
+  test("listPlayers only returns players for the requested team", async () => {
+    const a = await db.addTeam({ name: "A" });
+    const b = await db.addTeam({ name: "B" });
+    await db.addPlayer({ teamId: a.id, name: "A1" });
+    await db.addPlayer({ teamId: b.id, name: "B1" });
+
+    const aPlayers = await db.listPlayers({ teamId: a.id });
+    assert.equal(aPlayers.length, 1);
+    assert.equal(aPlayers[0].name, "A1");
+  });
+
+  test("updatePlayer changes status and captain flag", async () => {
+    const team = await db.addTeam({ name: "A" });
+    const player = await db.addPlayer({ teamId: team.id, name: "X" });
+
+    const injured = await db.updatePlayer(player.id, { status: "injured", statusNote: "hamstring" });
+    assert.equal(injured.status, "injured");
+    assert.equal(injured.statusNote, "hamstring");
+
+    const captain = await db.updatePlayer(player.id, { isCaptain: true });
+    assert.equal(captain.isCaptain, true);
+  });
+
+  test("updatePlayer rejects an invalid status", async () => {
+    const team = await db.addTeam({ name: "A" });
+    const player = await db.addPlayer({ teamId: team.id, name: "X" });
+    await assert.rejects(
+      () => db.updatePlayer(player.id, { status: "on-loan" }),
+      /status must be one of/
+    );
+  });
+
+  test("deletePlayer removes them", async () => {
+    const team = await db.addTeam({ name: "A" });
+    const player = await db.addPlayer({ teamId: team.id, name: "X" });
+    assert.equal(await db.deletePlayer(player.id), true);
+    assert.deepEqual(await db.listPlayers({ teamId: team.id }), []);
+  });
+});

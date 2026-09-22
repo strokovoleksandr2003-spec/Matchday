@@ -91,6 +91,34 @@
     </div>
     <div class="card" id="teamsList"></div>
 
+    <h2>Склад і інформація про команду</h2>
+    <div class="card">
+      <label>Команда</label>
+      <select id="squadTeam"></select>
+    </div>
+    <div class="card" id="teamInfoCard" style="display:none">
+      <label>Тренер</label>
+      <input id="teamCoach" placeholder="Ім'я тренера" />
+      <label>Стадіон</label>
+      <input id="teamStadium" placeholder="Назва стадіону" />
+      <button id="saveTeamInfo">Зберегти інфо про команду</button>
+    </div>
+    <div class="card" id="addPlayerCard" style="display:none">
+      <div class="row">
+        <input id="playerName" placeholder="Ім'я гравця" />
+        <input id="playerNumber" type="number" min="0" style="width:64px" placeholder="№" />
+        <select id="playerPosition" style="width:90px">
+          <option value="">Поз.</option>
+          <option value="GK">ВР</option>
+          <option value="DF">ЗХ</option>
+          <option value="MF">ПЗ</option>
+          <option value="FW">НП</option>
+        </select>
+        <button id="addPlayer">Додати</button>
+      </div>
+    </div>
+    <div class="card" id="playersList"></div>
+
     <h2>Новий матч</h2>
     <div class="card">
       <label>Господарі</label>
@@ -152,6 +180,18 @@ async function refreshTeams() {
   const opts = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   document.getElementById('homeTeam').innerHTML = opts;
   document.getElementById('awayTeam').innerHTML = opts;
+
+  const squadSelect = document.getElementById('squadTeam');
+  const previouslySelected = squadSelect.value;
+  squadSelect.innerHTML = opts;
+  if (teams.length) {
+    squadSelect.value = teams.some(t => t.id === previouslySelected) ? previouslySelected : teams[0].id;
+    await loadSquad(squadSelect.value);
+  } else {
+    document.getElementById('teamInfoCard').style.display = 'none';
+    document.getElementById('addPlayerCard').style.display = 'none';
+    document.getElementById('playersList').innerHTML = '';
+  }
 }
 
 function teamName(id) {
@@ -203,6 +243,53 @@ async function refreshAll() {
   await refreshMatches();
 }
 
+function positionLabel(pos) {
+  return { GK: 'ВР', DF: 'ЗХ', MF: 'ПЗ', FW: 'НП' }[pos] || pos || '';
+}
+
+function statusLabel(status) {
+  return { available: 'Готовий', injured: 'Травма', suspended: 'Дискваліфікація' }[status] || status;
+}
+
+async function loadSquad(teamId) {
+  if (!teamId) return;
+  const team = teams.find(t => t.id === teamId);
+  renderTeamInfo(team);
+
+  const { players } = await api(`/players?teamId=${teamId}`);
+  renderPlayers(players);
+
+  document.getElementById('teamInfoCard').style.display = 'block';
+  document.getElementById('addPlayerCard').style.display = 'block';
+}
+
+function renderTeamInfo(team) {
+  document.getElementById('teamCoach').value = (team && team.coach) || '';
+  document.getElementById('teamStadium').value = (team && team.stadium) || '';
+}
+
+function renderPlayers(players) {
+  const list = document.getElementById('playersList');
+  const sorted = [...players].sort((a, b) => (a.jerseyNumber ?? 999) - (b.jerseyNumber ?? 999));
+  list.innerHTML = sorted.length
+    ? sorted.map(p => `
+        <div class="list-item">
+          <span>
+            #${p.jerseyNumber ?? '–'} ${p.name}${p.position ? ' · ' + positionLabel(p.position) : ''}${p.isCaptain ? ' · 👑' : ''}
+          </span>
+          <span class="row" style="width:auto">
+            <select data-status-for="${p.id}">
+              <option value="available" ${p.status === 'available' ? 'selected' : ''}>Готовий</option>
+              <option value="injured" ${p.status === 'injured' ? 'selected' : ''}>Травма</option>
+              <option value="suspended" ${p.status === 'suspended' ? 'selected' : ''}>Дискваліфікація</option>
+            </select>
+            <button class="secondary" data-toggle-captain="${p.id}" data-current="${p.isCaptain}">${p.isCaptain ? 'Зняти К' : 'Капітан'}</button>
+            <button class="danger" data-delete-player="${p.id}">✕</button>
+          </span>
+        </div>`).join('')
+    : '<p class="muted">У цієї команди ще немає гравців у складі.</p>';
+}
+
 document.getElementById('saveToken').addEventListener('click', async () => {
   localStorage.setItem('matchday_admin_token', document.getElementById('token').value.trim());
   try {
@@ -222,6 +309,56 @@ document.getElementById('addTeam').addEventListener('click', async () => {
     document.getElementById('teamName').value = '';
     await refreshTeams();
     setStatus('Команду додано.', 'ok');
+  } catch (err) {
+    setStatus(err.message, 'error');
+  }
+});
+
+document.getElementById('squadTeam').addEventListener('change', (e) => {
+  loadSquad(e.target.value).catch(err => setStatus(err.message, 'error'));
+});
+
+document.getElementById('saveTeamInfo').addEventListener('click', async () => {
+  const teamId = document.getElementById('squadTeam').value;
+  if (!teamId) return;
+  try {
+    await api(`/teams/${teamId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        coach: document.getElementById('teamCoach').value.trim(),
+        stadium: document.getElementById('teamStadium').value.trim(),
+      }),
+    });
+    await refreshTeams();
+    await loadSquad(teamId);
+    setStatus('Інфо про команду збережено.', 'ok');
+  } catch (err) {
+    setStatus(err.message, 'error');
+  }
+});
+
+document.getElementById('addPlayer').addEventListener('click', async () => {
+  const teamId = document.getElementById('squadTeam').value;
+  const name = document.getElementById('playerName').value.trim();
+  const jerseyNumber = document.getElementById('playerNumber').value;
+  const position = document.getElementById('playerPosition').value;
+  if (!teamId || !name) return setStatus('Вкажи імʼя гравця.', 'error');
+
+  try {
+    await api('/players', {
+      method: 'POST',
+      body: JSON.stringify({
+        teamId,
+        name,
+        position: position || null,
+        jerseyNumber: jerseyNumber ? Number(jerseyNumber) : null,
+      }),
+    });
+    document.getElementById('playerName').value = '';
+    document.getElementById('playerNumber').value = '';
+    document.getElementById('playerPosition').value = '';
+    await loadSquad(teamId);
+    setStatus('Гравця додано.', 'ok');
   } catch (err) {
     setStatus(err.message, 'error');
   }
@@ -257,6 +394,8 @@ document.addEventListener('click', async (e) => {
   const deleteTeamId = e.target.getAttribute('data-delete-team');
   const deleteMatchId = e.target.getAttribute('data-delete-match');
   const editId = e.target.getAttribute('data-edit-score');
+  const toggleCaptainId = e.target.getAttribute('data-toggle-captain');
+  const deletePlayerId = e.target.getAttribute('data-delete-player');
 
   try {
     if (saveId) {
@@ -282,6 +421,27 @@ document.addEventListener('click', async (e) => {
       await refreshMatches();
       setStatus('Матч повернуто до запланованих — онови рахунок.', 'ok');
     }
+    if (toggleCaptainId) {
+      const current = e.target.getAttribute('data-current') === 'true';
+      await api(`/players/${toggleCaptainId}`, { method: 'PATCH', body: JSON.stringify({ isCaptain: !current }) });
+      await loadSquad(document.getElementById('squadTeam').value);
+    }
+    if (deletePlayerId) {
+      if (!confirm('Видалити гравця зі складу?')) return;
+      await api(`/players/${deletePlayerId}`, { method: 'DELETE' });
+      await loadSquad(document.getElementById('squadTeam').value);
+    }
+  } catch (err) {
+    setStatus(err.message, 'error');
+  }
+});
+
+document.addEventListener('change', async (e) => {
+  const statusForId = e.target.getAttribute('data-status-for');
+  if (!statusForId) return;
+  try {
+    await api(`/players/${statusForId}`, { method: 'PATCH', body: JSON.stringify({ status: e.target.value }) });
+    setStatus('Статус гравця оновлено.', 'ok');
   } catch (err) {
     setStatus(err.message, 'error');
   }

@@ -5,8 +5,27 @@
 create table if not exists teams (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  league text not null default 'upl'
+  league text not null default 'upl',
+  coach text,
+  stadium text
 );
+
+-- safe to re-run on a table that already existed before these columns did
+alter table teams add column if not exists coach text;
+alter table teams add column if not exists stadium text;
+
+create table if not exists players (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references teams(id) on delete cascade,
+  name text not null,
+  position text,
+  jersey_number int,
+  is_captain boolean not null default false,
+  status text not null default 'available' check (status in ('available', 'injured', 'suspended')),
+  status_note text
+);
+
+create index if not exists players_team_idx on players (team_id);
 
 create table if not exists matches (
   id uuid primary key default gen_random_uuid(),
@@ -28,6 +47,7 @@ create index if not exists matches_league_status_idx on matches (league, status)
 -- so RLS can stay simple — locked by default, service_role bypasses it.
 alter table teams enable row level security;
 alter table matches enable row level security;
+alter table players enable row level security;
 
 -- --- seed data -------------------------------------------------------
 
@@ -43,4 +63,10 @@ insert into matches (league, home_team_id, away_team_id, utc_date, matchday, sta
   ('upl', '11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', '2026-09-13T15:00:00Z', 4, 'finished', 2, 1),
   ('upl', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', '2026-09-20T15:00:00Z', 5, 'finished', 1, 1),
   ('upl', '11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', '2026-09-27T18:00:00Z', 6, 'scheduled', null, null)
+on conflict do nothing;
+
+insert into players (team_id, name, position, jersey_number, is_captain, status) values
+  ('11111111-1111-1111-1111-111111111111', 'Гравець 1 (приклад)', 'GK', 1, true, 'available'),
+  ('11111111-1111-1111-1111-111111111111', 'Гравець 2 (приклад)', 'DF', 4, false, 'injured'),
+  ('11111111-1111-1111-1111-111111111111', 'Гравець 3 (приклад)', 'MF', 8, false, 'available')
 on conflict do nothing;

@@ -108,3 +108,75 @@ describe("admin matches CRUD", () => {
     assert.equal(res.status, 400);
   });
 });
+
+describe("admin team info", () => {
+  test("PATCH /teams/:id sets coach and stadium", async () => {
+    const team = (
+      await request(app).post("/api/admin/teams").set("x-admin-token", "test-secret").send({ name: "A" })
+    ).body.team;
+
+    const res = await request(app)
+      .patch(`/api/admin/teams/${team.id}`)
+      .set("x-admin-token", "test-secret")
+      .send({ coach: "Coach Name", stadium: "Arena" });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.team.coach, "Coach Name");
+    assert.equal(res.body.team.stadium, "Arena");
+  });
+});
+
+describe("admin players CRUD", () => {
+  test("add, list, update status/captain, delete a player", async () => {
+    const team = (
+      await request(app).post("/api/admin/teams").set("x-admin-token", "test-secret").send({ name: "A" })
+    ).body.team;
+
+    const add = await request(app)
+      .post("/api/admin/players")
+      .set("x-admin-token", "test-secret")
+      .send({ teamId: team.id, name: "Player One", position: "FW", jerseyNumber: 9 });
+    assert.equal(add.status, 201);
+    assert.equal(add.body.player.status, "available");
+    const playerId = add.body.player.id;
+
+    const list = await request(app)
+      .get(`/api/admin/players?teamId=${team.id}`)
+      .set("x-admin-token", "test-secret");
+    assert.equal(list.body.players.length, 1);
+
+    const injured = await request(app)
+      .patch(`/api/admin/players/${playerId}`)
+      .set("x-admin-token", "test-secret")
+      .send({ status: "injured" });
+    assert.equal(injured.body.player.status, "injured");
+
+    const captain = await request(app)
+      .patch(`/api/admin/players/${playerId}`)
+      .set("x-admin-token", "test-secret")
+      .send({ isCaptain: true });
+    assert.equal(captain.body.player.isCaptain, true);
+
+    const del = await request(app)
+      .delete(`/api/admin/players/${playerId}`)
+      .set("x-admin-token", "test-secret");
+    assert.equal(del.status, 200);
+  });
+
+  test("400s for an invalid status", async () => {
+    const team = (
+      await request(app).post("/api/admin/teams").set("x-admin-token", "test-secret").send({ name: "A" })
+    ).body.team;
+    const player = (
+      await request(app)
+        .post("/api/admin/players")
+        .set("x-admin-token", "test-secret")
+        .send({ teamId: team.id, name: "X" })
+    ).body.player;
+
+    const res = await request(app)
+      .patch(`/api/admin/players/${player.id}`)
+      .set("x-admin-token", "test-secret")
+      .send({ status: "on-loan" });
+    assert.equal(res.status, 400);
+  });
+});
