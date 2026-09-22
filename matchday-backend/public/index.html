@@ -2,173 +2,62 @@
 <html lang="uk">
 <head>
 <meta charset="utf-8" />
-<title>Matchday</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Matchday — УПЛ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
 <style>
-  :root {
-    --ink: #171A17;
-    --bg: #F5F4EF;
-    --card: #FFFFFF;
-    --line: #E3E0D5;
-    --muted: #8C8F85;
-    --accent: #1E7A4C;
-    --win: #1E7A4C; --win-bg: #E3F2E9;
-    --draw: #8A6D1D; --draw-bg: #F2EFE0;
-    --loss: #B23B32; --loss-bg: #FBE7E5;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: Inter, system-ui, sans-serif;
-  }
-  .shell { max-width: 720px; margin: 0 auto; padding: 20px 20px 60px; }
-  header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 20px;
-  }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .logo {
-    width: 32px; height: 32px; border-radius: 9px; background: var(--accent);
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
-  .brand-name {
-    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px;
-    letter-spacing: -0.02em;
-  }
-  .pill {
-    padding: 6px 14px; border-radius: 20px; background: var(--ink); color: var(--bg);
-    font-size: 12px; font-weight: 600;
-  }
-  #updated { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  h2 {
-    font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700;
-    margin: 28px 0 10px;
-  }
-  .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 16px 18px;
-  }
-
-  #nextMatch {
-    background: var(--ink); border-radius: 16px; padding: 18px 20px;
-    color: var(--bg);
-  }
-  .nm-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .nm-meta .tag {
+  .next-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .next-meta .tag {
     font-size: 11px; color: var(--accent); background: rgba(30,122,76,0.22);
-    padding: 3px 8px; border-radius: 6px; font-weight: 600;
+    padding: 3px 9px; border-radius: 6px; font-weight: 600;
   }
-  .nm-meta .when { font-size: 12px; color: #9A9D93; }
-  .nm-teams { display: flex; align-items: center; justify-content: space-between; }
-  .nm-team { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100px; }
-  .nm-avatar {
-    width: 40px; height: 40px; border-radius: 50%; background: #2A2E27;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700;
-  }
-  .nm-team span:last-child { font-size: 13px; font-weight: 600; text-align: center; }
-  .nm-vs { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; color: #9A9D93; }
+  .next-meta .when { font-size: 12px; color: #9A9D93; }
+  .next-teams { display: flex; align-items: center; justify-content: space-between; }
+  .next-team { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 110px; }
+  .next-team span:last-child { font-size: 13px; font-weight: 600; text-align: center; }
+  .next-vs { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; color: #9A9D93; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: right; padding: 6px 4px; color: var(--muted); font-weight: 500; font-size: 11px; }
-  th:nth-child(2) { text-align: left; }
-  td { padding: 10px 4px; border-top: 1px solid var(--line); text-align: right; }
-  td:nth-child(2) { text-align: left; font-weight: 600; }
-  td:first-child, th:first-child { text-align: left; color: var(--muted); width: 24px; }
-
-  .form-row {
+  .result-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 9px 0; border-top: 1px solid var(--line);
+    padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px;
   }
-  .form-row:first-child { border-top: none; }
-  .form-row .name { font-size: 13px; font-weight: 600; }
-  .badges { display: flex; gap: 4px; }
-  .badge {
-    width: 20px; height: 20px; border-radius: 5px; font-size: 10px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .badge.W { background: var(--win-bg); color: var(--win); }
-  .badge.D { background: var(--draw-bg); color: var(--draw); }
-  .badge.L { background: var(--loss-bg); color: var(--loss); }
+  .result-row:first-child { border-top: none; }
+  .result-row .score { font-weight: 700; }
 
-  .empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
-  .error { color: var(--loss); font-size: 13px; }
-
-  .squad-card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 14px 18px; margin-bottom: 10px;
-  }
-  .squad-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
-  .squad-head .name { font-weight: 700; font-size: 14px; }
-  .squad-head .coach { font-size: 12px; color: var(--muted); }
-  .squad-line { font-size: 13px; margin: 4px 0; }
-  .squad-line .label { color: var(--muted); }
-  .unavail-tag {
-    display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
-    padding: 2px 8px; border-radius: 6px; margin: 2px 4px 2px 0;
-  }
-  .unavail-tag.injured { background: var(--loss-bg); color: var(--loss); }
-  .unavail-tag.suspended { background: var(--draw-bg); color: var(--draw); }
+  .see-all { display: block; text-align: center; font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 12px; }
 </style>
 </head>
 <body>
-<div class="shell">
 
-  <header>
-    <div class="brand">
-      <div class="logo">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F5F4EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg>
-      </div>
-      <div>
-        <div class="brand-name">Matchday</div>
-        <div id="updated">завантаження…</div>
-      </div>
-    </div>
-    <span class="pill">UPL</span>
-  </header>
+<div id="header"></div>
 
-  <h2>Найближчий матч</h2>
-  <div id="nextMatch"><p class="empty" style="color:#9A9D93">Завантаження…</p></div>
+<main class="shell">
+
+  <h1 class="page-title">Українська Прем'єр-ліга</h1>
+  <p class="page-sub" id="updated">завантаження…</p>
+
+  <div class="card-dark" id="nextMatch">
+    <p class="empty" style="color:#9A9D93">Завантаження…</p>
+  </div>
 
   <h2>Турнірна таблиця</h2>
   <div class="card">
-    <table>
-      <thead><tr><th>#</th><th>Команда</th><th>І</th><th>З</th><th>Н</th><th>П</th><th>О</th></tr></thead>
-      <tbody id="standingsBody"><tr><td colspan="7" class="empty">Завантаження…</td></tr></tbody>
+    <table class="data">
+      <thead><tr><th>#</th><th>Команда</th><th>І</th><th>О</th></tr></thead>
+      <tbody id="standingsBody"><tr><td colspan="4" class="empty">Завантаження…</td></tr></tbody>
     </table>
+    <a class="see-all" href="table.html">Повна таблиця →</a>
   </div>
 
-  <h2>Форма команд</h2>
-  <div class="card" id="formList"><p class="empty">Завантаження…</p></div>
+  <h2>Останні результати</h2>
+  <div class="card" id="recentResults"><p class="empty">Завантаження…</p></div>
 
-  <h2>Склади команд</h2>
-  <div id="squadsList"></div>
+</main>
 
-</div>
-
+<script src="assets/app.js"></script>
 <script>
-const LEAGUE = 'upl';
-
-async function getJSON(path) {
-  const res = await fetch(path);
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
-  return res.json();
-}
-
-function initials(name) {
-  return name.trim().slice(0, 3).toUpperCase();
-}
-
-function fmtDate(iso) {
-  return new Date(iso).toLocaleString('uk-UA', {
-    weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  });
-}
-
 function renderNextMatch(match) {
   const el = document.getElementById('nextMatch');
   if (!match) {
@@ -176,104 +65,70 @@ function renderNextMatch(match) {
     return;
   }
   el.innerHTML = `
-    <div class="nm-meta">
-      <span class="tag">${match.matchday ? 'ТУР ' + match.matchday : 'НАЙБЛИЖЧИЙ'}</span>
-      <span class="when">${fmtDate(match.utc_date)}</span>
+    <div class="next-meta">
+      <span class="tag">${match.matchday ? 'ТУР ' + match.matchday : 'НАЙБЛИЖЧИЙ МАТЧ'}</span>
+      <span class="when">${fmtDateTime(match.utc_date)}</span>
     </div>
-    <div class="nm-teams">
-      <div class="nm-team">
-        <div class="nm-avatar">${initials(match.home_team.name)}</div>
+    <div class="next-teams">
+      <div class="next-team">
+        <div class="team-avatar">${initials(match.home_team.name)}</div>
         <span>${match.home_team.name}</span>
       </div>
-      <span class="nm-vs">VS</span>
-      <div class="nm-team">
-        <div class="nm-avatar">${initials(match.away_team.name)}</div>
+      <span class="next-vs">VS</span>
+      <div class="next-team">
+        <div class="team-avatar">${initials(match.away_team.name)}</div>
         <span>${match.away_team.name}</span>
       </div>
     </div>`;
 }
 
-function renderStandings(standings) {
+function renderStandingsPreview(standings) {
   const body = document.getElementById('standingsBody');
   if (!standings.length) {
-    body.innerHTML = '<tr><td colspan="7" class="empty">Команд ще немає.</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" class="empty">Команд ще немає.</td></tr>';
     return;
   }
-  body.innerHTML = standings.map(row => `
+  body.innerHTML = standings.slice(0, 5).map(row => `
     <tr>
       <td>${row.position}</td>
-      <td>${row.team.name}</td>
+      <td><a href="team.html?id=${row.team.id}">${row.team.name}</a></td>
       <td>${row.matches_played}</td>
-      <td>${row.wins}</td>
-      <td>${row.draws}</td>
-      <td>${row.losses}</td>
       <td style="font-weight:700">${row.points}</td>
     </tr>`).join('');
 }
 
-function renderForm(form) {
-  const el = document.getElementById('formList');
-  const teams = Object.keys(form);
-  if (!teams.length) {
-    el.innerHTML = '<p class="empty">Ще немає завершених матчів.</p>';
-    return;
-  }
-  el.innerHTML = teams.map(name => `
-    <div class="form-row">
-      <span class="name">${name}</span>
-      <span class="badges">
-        ${form[name].map(r => `<span class="badge ${r}">${r}</span>`).join('')}
-      </span>
-    </div>`).join('');
-}
+function renderRecentResults(matches) {
+  const el = document.getElementById('recentResults');
+  const finished = matches
+    .filter(m => m.status === 'finished')
+    .sort((a, b) => new Date(b.utc_date) - new Date(a.utc_date))
+    .slice(0, 5);
 
-function positionLabel(pos) {
-  return { GK: 'ВР', DF: 'ЗХ', MF: 'ПЗ', FW: 'НП' }[pos] || pos || '';
-}
-
-async function renderSquads(standings) {
-  const el = document.getElementById('squadsList');
-  if (!standings.length) {
-    el.innerHTML = '<p class="empty">Команд ще немає.</p>';
+  if (!finished.length) {
+    el.innerHTML = '<p class="empty">Завершених матчів ще немає.</p>';
     return;
   }
 
-  const details = await Promise.all(
-    standings.map(row => getJSON(`/api/leagues/${LEAGUE}/teams/${row.team.id}`).catch(() => null))
-  );
-
-  el.innerHTML = details.filter(Boolean).map(({ team, players }) => {
-    const captain = players.find(p => p.isCaptain);
-    const unavailable = players.filter(p => p.status !== 'available');
-
-    return `
-      <div class="squad-card">
-        <div class="squad-head">
-          <span class="name">${team.name}</span>
-          ${team.coach ? `<span class="coach">Тренер: ${team.coach}</span>` : ''}
-        </div>
-        ${team.stadium ? `<div class="squad-line"><span class="label">Стадіон:</span> ${team.stadium}</div>` : ''}
-        ${captain ? `<div class="squad-line"><span class="label">Капітан:</span> ${captain.name}</div>` : ''}
-        <div class="squad-line">
-          ${unavailable.length
-            ? unavailable.map(p => `<span class="unavail-tag ${p.status}">${p.name}${p.jerseyNumber ? ' #' + p.jerseyNumber : ''} — ${p.status === 'injured' ? 'травма' : 'дискваліфікація'}</span>`).join('')
-            : '<span class="label">Повний склад доступний</span>'}
-        </div>
-      </div>`;
-  }).join('');
+  el.innerHTML = finished.map(m => `
+    <div class="result-row">
+      <span>${m.home_team.name}</span>
+      <span class="score">${m.score.home} : ${m.score.away}</span>
+      <span>${m.away_team.name}</span>
+    </div>`).join('') + '<a class="see-all" href="matches.html">Усі матчі →</a>';
 }
 
-async function refresh() {
+async function load() {
   try {
-    const [standingsRes, nextRes, formRes] = await Promise.all([
-      getJSON(`/api/leagues/${LEAGUE}/standings`),
-      getJSON(`/api/leagues/${LEAGUE}/next-match`),
-      getJSON(`/api/leagues/${LEAGUE}/form?limit=5`),
+    const [standingsRes, nextRes, matchesRes] = await Promise.all([
+      api('/standings'),
+      api('/next-match'),
+      api('/matches'),
     ]);
-    renderStandings(standingsRes.standings);
+
     renderNextMatch(nextRes.match);
-    renderForm(formRes.form);
-    renderSquads(standingsRes.standings);
+    renderStandingsPreview(standingsRes.standings);
+    renderRecentResults(matchesRes.matches);
+
     document.getElementById('updated').textContent =
       'оновлено ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
   } catch (err) {
@@ -281,8 +136,7 @@ async function refresh() {
   }
 }
 
-refresh();
-setInterval(refresh, 30000); // re-poll every 30s so results entered in /admin.html show up without a manual reload
+load();
 </script>
 </body>
 </html>

@@ -86,8 +86,25 @@ describe("GET /api/leagues/:league/form", () => {
   });
 });
 
-describe("GET /api/leagues/:league/teams/:teamId", () => {
-  test("returns team info and squad", async () => {
+describe("GET /api/leagues/:league/matches", () => {
+  test("returns all matches with team names joined on", async () => {
+    const res = await request(app).get("/api/leagues/upl/matches");
+    assert.equal(res.status, 200);
+    assert.equal(res.body.matches.length, 5); // 2 finished + 3 scheduled from the seed
+    assert.ok(res.body.matches.every((m) => m.home_team.name && m.away_team.name));
+  });
+
+  test("filters by status", async () => {
+    const finished = await request(app).get("/api/leagues/upl/matches?status=finished");
+    assert.equal(finished.body.matches.length, 2);
+    assert.ok(finished.body.matches.every((m) => m.score !== null));
+
+    const scheduled = await request(app).get("/api/leagues/upl/matches?status=scheduled");
+    assert.equal(scheduled.body.matches.length, 3);
+  });
+});
+
+describe("GET /api/leagues/:league/teams/:teamId", () => {  test("returns team info and squad", async () => {
     await db.updateTeam(polissya.id, { coach: "Coach", stadium: "Arena" });
     await db.addPlayer({ teamId: polissya.id, name: "Captain Player", isCaptain: true });
     await db.addPlayer({ teamId: polissya.id, name: "Injured Player", isCaptain: false });

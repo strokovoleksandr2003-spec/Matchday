@@ -61,9 +61,28 @@ router.get("/:league/next-match", async (req, res) => {
   }
 });
 
-// GET /api/leagues/:league/fixtures/week
-router.get("/:league/fixtures/week", async (req, res) => {
+// GET /api/leagues/:league/matches?status=finished|scheduled
+// All matches with team names joined on — powers the matches page and
+// the "recent results" block on the home page.
+router.get("/:league/matches", async (req, res) => {
   try {
+    getLeague(req.params.league);
+    const teams = await teamsMap(req.params.league);
+    const matches = await db.listMatches({
+      league: req.params.league,
+      status: req.query.status,
+    });
+    res.json({
+      league: req.params.league,
+      matches: matches.map((m) => withTeamNames(m, teams)),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// GET /api/leagues/:league/fixtures/week
+router.get("/:league/fixtures/week", async (req, res) => {  try {
     getLeague(req.params.league);
     const teams = await teamsMap(req.params.league);
     const now = new Date();

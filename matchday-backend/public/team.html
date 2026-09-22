@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Команда — Matchday</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .team-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+  .team-hero .team-avatar { width: 56px; height: 56px; font-size: 15px; }
+  .team-hero h1 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; margin: 0; letter-spacing: -0.02em; }
+  .team-hero .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .stat-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px;
+  }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; text-align: center;
+  }
+  .stat .value { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; }
+  .stat .label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .player-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px;
+  }
+  .player-row:first-child { border-top: none; }
+  .player-row .num { color: var(--muted); width: 28px; display: inline-block; }
+  .player-row .pos {
+    font-size: 11px; color: var(--muted); border: 1px solid var(--line);
+    padding: 1px 6px; border-radius: 5px; margin-left: 6px;
+  }
+  .status-tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+  .status-tag.injured { background: var(--loss-bg); color: var(--loss); }
+  .status-tag.suspended { background: var(--draw-bg); color: var(--draw); }
+
+  .match-row {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+    padding: 11px 0; border-top: 1px solid var(--line); font-size: 13px;
+  }
+  .match-row:first-child { border-top: none; }
+  .match-row .home { text-align: right; }
+  .match-row .away { text-align: left; }
+  .match-row .middle { text-align: center; min-width: 70px; }
+  .match-row .score { font-weight: 700; }
+  .match-row .time { font-size: 12px; color: var(--muted); }
+  .match-row .date { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .match-row .self { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div id="header"></div>
+
+<main class="shell">
+
+  <div id="teamHeader">
+    <p class="empty">Завантаження…</p>
+  </div>
+
+  <div id="teamBody" style="display:none">
+
+    <h2>Статистика сезону</h2>
+    <div class="stat-grid" id="statGrid"></div>
+
+    <h2>Склад</h2>
+    <div class="card" id="squadList"></div>
+
+    <h2>Матчі команди</h2>
+    <div class="card" id="teamMatches"></div>
+
+  </div>
+
+</main>
+
+<script src="assets/app.js"></script>
+<script>
+const teamId = new URLSearchParams(location.search).get('id');
+
+function renderHeader(team, row, form) {
+  const parts = [];
+  if (team.coach) parts.push(`Тренер: ${team.coach}`);
+  if (team.stadium) parts.push(team.stadium);
+
+  document.getElementById('teamHeader').innerHTML = `
+    <div class="team-hero">
+      <span class="team-avatar light">${initials(team.name)}</span>
+      <div>
+        <h1>${team.name}</h1>
+        <div class="meta">${parts.join(' · ') || 'Інформація ще не заповнена'}</div>
+      </div>
+    </div>
+    ${form.length ? `<div class="badges" style="margin-bottom:22px">${
+      form.map(r => `<span class="badge ${r}">${r}</span>`).join('')
+    }</div>` : '<div style="margin-bottom:22px"></div>'}`;
+}
+
+function renderStats(row) {
+  if (!row) {
+    document.getElementById('statGrid').innerHTML = '<p class="empty">Ще немає зіграних матчів.</p>';
+    return;
+  }
+  const gd = row.goal_difference;
+  const stats = [
+    { value: row.position, label: 'Місце' },
+    { value: row.points, label: 'Очки' },
+    { value: row.matches_played, label: 'Ігри' },
+    { value: `${row.wins}-${row.draws}-${row.losses}`, label: 'В-Н-П' },
+    { value: row.goals_for, label: 'Забито' },
+    { value: row.goals_against, label: 'Пропущено' },
+    { value: `${gd > 0 ? '+' : ''}${gd}`, label: 'Різниця' },
+  ];
+  document.getElementById('statGrid').innerHTML = stats.map(s => `
+    <div class="stat">
+      <div class="value">${s.value}</div>
+      <div class="label">${s.label}</div>
+    </div>`).join('');
+}
+
+function renderSquad(players) {
+  const el = document.getElementById('squadList');
+  if (!players.length) {
+    el.innerHTML = '<p class="empty">Склад ще не заповнено.</p>';
+    return;
+  }
+  const sorted = [...players].sort((a, b) => (a.jerseyNumber ?? 999) - (b.jerseyNumber ?? 999));
+  el.innerHTML = sorted.map(p => `
+    <div class="player-row">
+      <span>
+        <span class="num">${p.jerseyNumber ?? '–'}</span>
+        ${p.name}${p.isCaptain ? ' <span title="Капітан">👑</span>' : ''}
+        ${p.position ? `<span class="pos">${positionLabel(p.position)}</span>` : ''}
+      </span>
+      ${p.status !== 'available'
+        ? `<span class="status-tag ${p.status}">${statusLabel(p.status)}</span>`
+        : ''}
+    </div>`).join('');
+}
+
+function renderTeamMatches(matches, teamName) {
+  const el = document.getElementById('teamMatches');
+  const own = matches
+    .filter(m => m.home_team.id === teamId || m.away_team.id === teamId)
+    .sort((a, b) => new Date(b.utc_date) - new Date(a.utc_date));
+
+  if (!own.length) {
+    el.innerHTML = '<p class="empty">Матчів ще немає.</p>';
+    return;
+  }
+
+  el.innerHTML = own.map(m => {
+    const middle = m.status === 'finished'
+      ? `<span class="score">${m.score.home} : ${m.score.away}</span><span class="date">${fmtDate(m.utc_date)}</span>`
+      : `<span class="time">${new Date(m.utc_date).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span><span class="date">${fmtDate(m.utc_date)}</span>`;
+
+    return `
+      <div class="match-row">
+        <span class="home ${m.home_team.id === teamId ? 'self' : ''}">${m.home_team.name}</span>
+        <span class="middle">${middle}</span>
+        <span class="away ${m.away_team.id === teamId ? 'self' : ''}">${m.away_team.name}</span>
+      </div>`;
+  }).join('');
+}
+
+async function load() {
+  if (!teamId) {
+    document.getElementById('teamHeader').innerHTML =
+      '<p class="error">Команду не вказано. <a href="teams.html">До списку команд</a></p>';
+    return;
+  }
+
+  try {
+    const [detail, standingsRes, formRes, matchesRes] = await Promise.all([
+      api(`/teams/${teamId}`),
+      api('/standings'),
+      api('/form?limit=5'),
+      api('/matches'),
+    ]);
+
+    const row = standingsRes.standings.find(r => r.team.id === teamId);
+    const form = formRes.form[detail.team.name] || [];
+
+    document.title = `${detail.team.name} — Matchday`;
+    renderHeader(detail.team, row, form);
+    renderStats(row);
+    renderSquad(detail.players);
+    renderTeamMatches(matchesRes.matches, detail.team.name);
+
+    document.getElementById('teamBody').style.display = 'block';
+  } catch (err) {
+    document.getElementById('teamHeader').innerHTML =
+      `<p class="error">${err.message} — <a href="teams.html">до списку команд</a></p>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

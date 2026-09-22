@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Матчі — Matchday</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs button {
+    font: inherit; font-size: 13px; font-weight: 600;
+    padding: 8px 16px; border-radius: 20px; cursor: pointer;
+    background: var(--card); color: var(--muted); border: 1px solid var(--line);
+  }
+  .tabs button.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  .matchday-group + .matchday-group { margin-top: 20px; }
+  .matchday-label {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;
+  }
+
+  .match-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .match-row:first-child { border-top: none; }
+  .match-row .home { text-align: right; font-weight: 500; }
+  .match-row .away { text-align: left; font-weight: 500; }
+  .match-row .middle {
+    text-align: center; min-width: 74px;
+  }
+  .match-row .score { font-weight: 700; font-size: 15px; }
+  .match-row .time { font-size: 12px; color: var(--muted); }
+  .match-row .date { font-size: 11px; color: var(--muted); display: block; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div id="header"></div>
+
+<main class="shell">
+
+  <h1 class="page-title">Матчі</h1>
+  <p class="page-sub">Розклад і результати УПЛ</p>
+
+  <div class="tabs">
+    <button data-tab="scheduled" class="active">Заплановані</button>
+    <button data-tab="finished">Результати</button>
+  </div>
+
+  <div id="matchesList"><p class="empty">Завантаження…</p></div>
+
+</main>
+
+<script src="assets/app.js"></script>
+<script>
+let allMatches = [];
+let activeTab = 'scheduled';
+
+// Groups matches by matchday so the list reads like a fixture list
+// rather than one long undifferentiated column.
+function groupByMatchday(matches) {
+  const groups = new Map();
+  for (const m of matches) {
+    const key = m.matchday ?? 'other';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(m);
+  }
+  return groups;
+}
+
+function renderMatchRow(m) {
+  const middle = m.status === 'finished'
+    ? `<span class="score">${m.score.home} : ${m.score.away}</span>
+       <span class="date">${fmtDate(m.utc_date)}</span>`
+    : `<span class="time">${new Date(m.utc_date).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>
+       <span class="date">${fmtDate(m.utc_date)}</span>`;
+
+  return `
+    <div class="match-row">
+      <span class="home">${m.home_team.name}</span>
+      <span class="middle">${middle}</span>
+      <span class="away">${m.away_team.name}</span>
+    </div>`;
+}
+
+function render() {
+  const el = document.getElementById('matchesList');
+  let matches = allMatches.filter(m => m.status === activeTab);
+
+  matches.sort((a, b) => activeTab === 'finished'
+    ? new Date(b.utc_date) - new Date(a.utc_date)
+    : new Date(a.utc_date) - new Date(b.utc_date));
+
+  if (!matches.length) {
+    el.innerHTML = `<div class="card"><p class="empty">${
+      activeTab === 'scheduled' ? 'Запланованих матчів немає.' : 'Завершених матчів ще немає.'
+    }</p></div>`;
+    return;
+  }
+
+  const groups = groupByMatchday(matches);
+  el.innerHTML = [...groups.entries()].map(([matchday, group]) => `
+    <div class="matchday-group">
+      <div class="matchday-label">${matchday === 'other' ? 'Без туру' : 'Тур ' + matchday}</div>
+      <div class="card">${group.map(renderMatchRow).join('')}</div>
+    </div>`).join('');
+}
+
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTab = btn.dataset.tab;
+    render();
+  });
+});
+
+async function load() {
+  try {
+    const { matches } = await api('/matches');
+    allMatches = matches;
+    render();
+  } catch (err) {
+    showError('matchesList', err);
+  }
+}
+
+load();
+</script>
+</body>
+</html>

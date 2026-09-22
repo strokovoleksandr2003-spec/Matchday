@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Команди — Matchday</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .team-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px; display: flex; align-items: center; gap: 12px;
+    transition: border-color 0.15s;
+  }
+  .team-card:hover { border-color: var(--ink); }
+  .team-card .info { min-width: 0; }
+  .team-card .name { font-weight: 600; font-size: 14px; }
+  .team-card .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div id="header"></div>
+
+<main class="shell">
+
+  <h1 class="page-title">Команди</h1>
+  <p class="page-sub">Клуби Української Прем'єр-ліги</p>
+
+  <div class="teams-grid" id="teamsGrid">
+    <p class="empty">Завантаження…</p>
+  </div>
+
+</main>
+
+<script src="assets/app.js"></script>
+<script>
+async function load() {
+  try {
+    const { standings } = await api('/standings');
+    const el = document.getElementById('teamsGrid');
+
+    if (!standings.length) {
+      el.innerHTML = '<p class="empty">Команд ще немає.</p>';
+      return;
+    }
+
+    // Sorted by table position, so the grid reads like the league order
+    el.innerHTML = standings.map(row => `
+      <a class="team-card" href="team.html?id=${row.team.id}">
+        <span class="team-avatar light">${initials(row.team.name)}</span>
+        <span class="info">
+          <div class="name">${row.team.name}</div>
+          <div class="meta">${row.position} місце · ${row.points} очк.</div>
+        </span>
+      </a>`).join('');
+  } catch (err) {
+    showError('teamsGrid', err);
+  }
+}
+
+load();
+</script>
+</body>
+</html>

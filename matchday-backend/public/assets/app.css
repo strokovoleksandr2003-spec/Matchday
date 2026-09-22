@@ -1,0 +1,186 @@
+/* Shared across every page. Page-specific styles stay in their own
+   file; anything reused (nav, cards, tables, badges) lives here. */
+
+:root {
+  --ink: #171A17;
+  --bg: #F5F4EF;
+  --card: #FFFFFF;
+  --line: #E3E0D5;
+  --muted: #8C8F85;
+  --accent: #1E7A4C;
+
+  --win: #1E7A4C; --win-bg: #E3F2E9;
+  --draw: #8A6D1D; --draw-bg: #F2EFE0;
+  --loss: #B23B32; --loss-bg: #FBE7E5;
+
+  --radius: 14px;
+  --shell-width: 860px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  padding-bottom: 60px;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* --- header + nav --------------------------------------------------- */
+
+.site-header {
+  background: var(--ink);
+  color: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.site-header .shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; }
+
+.brand .logo {
+  width: 30px; height: 30px; border-radius: 8px; background: var(--accent);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+.brand .name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700; font-size: 17px; letter-spacing: -0.02em;
+}
+
+.league-pill {
+  font-size: 12px; font-weight: 600;
+  background: rgba(245,244,239,0.12);
+  padding: 5px 12px; border-radius: 20px;
+}
+
+.site-nav {
+  display: flex; gap: 4px;
+  padding: 10px 20px 0;
+  overflow-x: auto;
+  max-width: var(--shell-width);
+  margin: 0 auto;
+}
+
+.site-nav a {
+  padding: 8px 14px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #9A9D93;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.site-nav a:hover { color: var(--bg); }
+
+.site-nav a.active {
+  color: var(--bg);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+/* --- layout ---------------------------------------------------------- */
+
+.shell {
+  max-width: var(--shell-width);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+main.shell { padding-top: 24px; }
+
+h1.page-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+
+p.page-sub { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+
+h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px; font-weight: 700;
+  margin: 28px 0 10px;
+}
+
+h2:first-of-type { margin-top: 0; }
+
+/* --- cards ----------------------------------------------------------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.card + .card { margin-top: 10px; }
+
+.card-dark {
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+/* --- tables ---------------------------------------------------------- */
+
+table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+table.data th {
+  text-align: right; padding: 6px 4px;
+  color: var(--muted); font-weight: 500; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+
+table.data th:nth-child(2), table.data td:nth-child(2) { text-align: left; }
+table.data th:first-child, table.data td:first-child {
+  text-align: left; color: var(--muted); width: 26px;
+}
+
+table.data td { padding: 11px 4px; border-top: 1px solid var(--line); text-align: right; }
+table.data td:nth-child(2) { font-weight: 600; }
+table.data tbody tr:hover { background: rgba(0,0,0,0.015); }
+
+/* --- form badges (W/D/L) --------------------------------------------- */
+
+.badges { display: flex; gap: 4px; }
+
+.badge {
+  width: 20px; height: 20px; border-radius: 5px;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.badge.W { background: var(--win-bg); color: var(--win); }
+.badge.D { background: var(--draw-bg); color: var(--draw); }
+.badge.L { background: var(--loss-bg); color: var(--loss); }
+
+/* --- misc ------------------------------------------------------------ */
+
+.empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
+.error { color: var(--loss); font-size: 13px; }
+.muted { color: var(--muted); }
+
+.row-between {
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.team-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #2A2E27; color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+
+.team-avatar.light { background: var(--line); color: var(--ink); }
