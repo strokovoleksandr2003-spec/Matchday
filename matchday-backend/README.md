@@ -45,11 +45,15 @@ Open `http://localhost:4000/admin.html` to enter teams/results, or
 Fixtures and results can be pulled from API-Football instead of typed in
 by hand.
 
-1. Sign up at **dashboard.api-football.com** (free tier: 100 requests/day)
-   and copy your key.
-2. Add three environment variables — locally in `.env`, and on Netlify
+1. Get a key one of two ways — **they authenticate differently**, and
+   mixing them up returns `403 Forbidden`:
+   - **dashboard.api-football.com** (free tier: 100 requests/day) →
+     host `v3.football.api-sports.io`
+   - **rapidapi.com** → host `api-football-v1.p.rapidapi.com`
+2. Add these environment variables — locally in `.env`, and on Netlify
    under Site configuration → Environment variables:
    - `API_FOOTBALL_KEY` — your key
+   - `API_FOOTBALL_HOST` — whichever host matches your key (above)
    - `API_FOOTBALL_LEAGUE_ID` — `333` for the UPL
    - `API_FOOTBALL_SEASON` — e.g. `2026`
 
